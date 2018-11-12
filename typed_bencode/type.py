@@ -31,8 +31,8 @@ def wrap_type(t):
         raise Exception(f"could not construct a type for {t}")
 
 class BaseType:
-    def encode(self, **values):
-        return self.encoder.to_bytes(values)
+    def encode(self, val):
+        return self.encoder.to_bytes(val)
 
     def decode(self, b):
         out, _ = self.decoder.from_bytes(b)
@@ -76,36 +76,38 @@ class DictType(BaseType):
 class DictEncoder:
     def __init__(self, type):
         self.type = type
-        self.out = BytesIO()
 
     def to_bytes(self, values):
-        self.out.write(b'd')
+        out = BytesIO()
+        out.write(b'd')
         for name in self.type.field_names:
             wrapped_type = self.type.fields[name]
             value = values[name]
 
-            self.out.write(str(len(name)).encode())
-            self.out.write(b':')
-            self.out.write(name.encode())
-            self.out.write(wrapped_type.encoder.to_bytes(value))
-        self.out.write(b'e')
-        return self.out.getvalue()
+            out.write(str(len(name)).encode())
+            out.write(b':')
+            out.write(name.encode())
+            out.write(wrapped_type.encoder.to_bytes(value))
+        out.write(b'e')
+        return out.getvalue()
 
 class DictDecoder:
     def __init__(self, type):
         self.type = type
 
     def from_bytes(self, b, pos=0):
-        assert b[pos] == 100 # d
+        assert b[pos] == 100, f"expected byte at {pos} {b[pos]} to be 100 (d)"
         pos += 1
         out = {}
         while pos < len(b) - 1:
+            if b[pos] == 101: # e
+                break
             key, pos = StringDecoder(None).from_bytes(b, pos)
             wrapped_type = self.type.fields[key]
             val, pos = wrapped_type.decoder.from_bytes(b, pos)
             out[key] = val
-        assert b[pos] == 101 # e
-        return (out, pos)
+        assert b[pos] == 101, f"expected byte at {pos} {b[pos]} to be 101 (e)"
+        return (out, pos+1)
 
 class StringEncoder:
     def __init__(self, type):
@@ -155,35 +157,37 @@ class IntDecoder:
         self.type = type
 
     def from_bytes(self, b, pos=0):
-        assert b[pos] == 105, f"expected byte at {pos} {b[pos]} to be 105" # i
+        assert b[pos] == 105, f"expected byte at {pos} {b[pos]} to be 105 (i)"
         end_index = b.find(b'e', pos)
         value = int(b[pos+1:end_index].decode())
-        return (value, end_index+1)
+        pos = end_index
+        assert b[pos] == 101, f"expected byte at {pos} {b[pos]} to be 101 (e)"
+        return (value, pos+1)
 
 class ListEncoder:
     def __init__(self, type):
         self.type = type
-        self.out = BytesIO()
 
     def to_bytes(self, values):
-        self.out.write(b'l')
+        out = BytesIO()
+        out.write(b'l')
         for v in values:
-            self.out.write(self.type.subtype.encoder.to_bytes(v))
-        self.out.write(b'e')
-        return self.out.getvalue()
+            out.write(self.type.subtype.encoder.to_bytes(v))
+        out.write(b'e')
+        return out.getvalue()
 
 class ListDecoder:
     def __init__(self, type):
         self.type = type
 
     def from_bytes(self, b, pos=0):
-        assert b[pos] == 108 # l
+        assert b[pos] == 108, f"expected byte at {pos} {b[pos]} to be 108 (l)"
         pos += 1
         out = []
         while pos < len(b) - 1:
-            if b[pos] == 101:
+            if b[pos] == 101: # e
                 break
             val, pos = self.type.subtype.decoder.from_bytes(b, pos)
             out.append(val)
-        assert b[pos] == 101 # e
+        assert b[pos] == 101, f"expected byte at {pos} {b[pos]} to be 101 (e)"
         return (out, pos+1)
