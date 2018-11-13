@@ -39,8 +39,8 @@ class TestEncoding(TestCase):
                 return super().to_bytes(val.isoformat())
 
         class DateDecoder(typed_bencode.StringDecoder):
-            def from_bytes(self, b):
-                v, pos = super().from_bytes(b)
+            def from_bytes(self, b, pos):
+                v, pos = super().from_bytes(b, pos)
                 return (datetime.datetime.fromisoformat(v), pos)
 
         class DateType(typed_bencode.BaseType):
