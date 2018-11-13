@@ -46,7 +46,7 @@ class BaseType(ABC):
         return self.encoder.to_bytes(val)
 
     def decode(self, b):
-        out, _ = self.decoder.from_bytes(b)
+        out, _ = self.decoder.from_bytes(b, 0)
         return out
 
 
@@ -130,7 +130,7 @@ class DictEncoder(BaseEncoder):
 
 
 class DictDecoder(BaseDecoder):
-    def from_bytes(self, b, pos=0):
+    def from_bytes(self, b, pos):
         assert b[pos] == 100, f"expected byte at {pos} {b[pos]} to be 100 (d)"
         pos += 1
         out = {}
@@ -151,7 +151,7 @@ class StringEncoder(BaseEncoder):
 
 
 class StringDecoder(BaseDecoder):
-    def from_bytes(self, b, pos=0):
+    def from_bytes(self, b, pos):
         sep_index = b.find(b":", pos)
         length = int(b[pos:sep_index].decode())
         start_index = sep_index + 1
@@ -165,7 +165,7 @@ class BytesEncoder(BaseEncoder):
 
 
 class BytesDecoder(BaseDecoder):
-    def from_bytes(self, b, pos=0):
+    def from_bytes(self, b, pos):
         sep_index = b.find(b":", pos)
         length = int(b[pos:sep_index].decode())
         start_index = sep_index + 1
@@ -179,7 +179,7 @@ class IntEncoder(BaseEncoder):
 
 
 class IntDecoder(BaseEncoder):
-    def from_bytes(self, b, pos=0):
+    def from_bytes(self, b, pos):
         assert b[pos] == 105, f"expected byte at {pos} {b[pos]} to be 105 (i)"
         end_index = b.find(b"e", pos)
         value = int(b[pos + 1 : end_index].decode())
@@ -199,7 +199,7 @@ class ListEncoder(BaseEncoder):
 
 
 class ListDecoder(BaseDecoder):
-    def from_bytes(self, b, pos=0):
+    def from_bytes(self, b, pos):
         assert b[pos] == 108, f"expected byte at {pos} {b[pos]} to be 108 (l)"
         pos += 1
         out = []
