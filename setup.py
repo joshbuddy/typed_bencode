@@ -84,7 +84,7 @@ class UploadCommand(Command):
         sys.exit()
 
     def twine_command(self):
-        return ['twine', 'upload', '-r', 'pypi', 'dist/*']
+        return ['twine', 'upload', 'dist/*']
 
 class UploadTestCommand(UploadCommand):
     def twine_command(self):
